@@ -41,7 +41,7 @@ regExp.test('Hello world. How are you?') // returns true
 You can also encode a pattern to a RegExp source string, without compiling it to a RegExp object, using `encodePattern`:
 
 ```ts
-import { encodePattern, possibly, inputStart } from 'regexp-builder'
+import { encodePattern, possibly, inputStart } from 'regexp-composer'
 
 // Build regexp
 const regExpSource = encodePattern([inputStart, 'Hello world.', possibly(' How are you?')])
