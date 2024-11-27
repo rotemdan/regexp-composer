@@ -14,7 +14,7 @@
 	"bugs": {
 		"url": "https://github.com/rotemdan/regexp-composer/issues"
 	},
-	"main": "./dist/RegExpBuilder.js",
+	"main": "./dist/Exports.js",
 	"type": "module",
 	"files": [
 		"dist",
