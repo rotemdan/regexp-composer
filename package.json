@@ -1,17 +1,18 @@
 {
-	"name": "regexp-builder",
+	"name": "regexp-composer",
 	"version": "0.1.0",
-	"description": "Easy-to-use regular expression builder. Supports all regular expression patterns accepted by the JavaScript RegExp engine.",
+	"description": "Easy-to-use regular expression builder, using a composable, function-oriented style. Supports all regular expression patterns accepted by the JavaScript RegExp engine.",
 	"author": "Rotem Dan",
 	"license": "MIT",
 	"keywords": [
+		"regular expression"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/rotemdan/regexp-builder"
+		"url": "https://github.com/rotemdan/regexp-composer"
 	},
 	"bugs": {
-		"url": "https://github.com/rotemdan/regexp-builder/issues"
+		"url": "https://github.com/rotemdan/regexp-composer/issues"
 	},
 	"main": "./dist/RegExpBuilder.js",
 	"type": "module",

@@ -1,4 +1,4 @@
-# Regular expression builder
+# Regular expression composer
 
 An easy-to-use TypeScript / JavaScript regular expression builder library designed to simplify the writing of regular expressions, in a composable, function-oriented style that's significantly more readable and less error-prone than standard regular expression syntax.
 
@@ -21,12 +21,12 @@ An easy-to-use TypeScript / JavaScript regular expression builder library design
 
 Install package:
 ```sh
-npm install regexp-builder
+npm install regexp-composer
 ```
 
 Build and use a simple regular expression
 ```ts
-import { buildRegExp, possibly, inputStart } from 'regexp-builder'
+import { buildRegExp, possibly, inputStart } from 'regexp-composer'
 
 // Build regExp object
 const regExp = buildRegExp([inputStart, 'Hello world.', possibly(' How are you?')])
