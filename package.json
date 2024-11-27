@@ -5,7 +5,9 @@
 	"author": "Rotem Dan",
 	"license": "MIT",
 	"keywords": [
-		"regular expression"
+		"regular expression",
+		"regular expression builder",
+		"regular expression composer"
 	],
 	"repository": {
 		"type": "git",
