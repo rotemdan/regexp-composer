@@ -1,0 +1,32 @@
+{
+	"name": "regexp-builder",
+	"version": "0.1.0",
+	"description": "Easy-to-use regular expression builder. Supports all regular expression patterns accepted by the JavaScript RegExp engine.",
+	"author": "Rotem Dan",
+	"license": "MIT",
+	"keywords": [
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/rotemdan/regexp-builder"
+	},
+	"bugs": {
+		"url": "https://github.com/rotemdan/regexp-builder/issues"
+	},
+	"main": "./dist/RegExpBuilder.js",
+	"type": "module",
+	"files": [
+		"dist",
+		"src",
+		"tsconfig.json",
+		"LICENSE.md",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node dist/Test.js"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@types/node": "^22.8.6"
+	}
+}
