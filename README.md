@@ -150,11 +150,11 @@ Encodes to `(?:pattern1|pattern2|pattern3|...)`.
 For efficiency, consecutive single-character patterns are grouped when encoded. For example:
 
 ```ts
-anyOf('V', 'B', 'hello', 'good', charRange('a', 'z'), lineFeed, 'world')
+anyOf('V', 'B', 'hello', oneOrMore('bye'), 'good', charRange('a', 'z'), lineFeed, 'world')
 ```
 Encodes to:
 ```
-(?:[vb]|hello|friend|[a-z\nt]|world)
+(?:[vb]|hello|(?:bye)+|good|[a-z\n]|world)
 ```
 
 ### `notAnyOfChars(singleCharPatterns)`
