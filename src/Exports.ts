@@ -47,8 +47,8 @@ export function encodePattern(pattern: Pattern, wrapRangeTokens = true): string 
 			return encodePattern_anyOf(pattern)
 		}
 
-		case 'notAnyOf': {
-			return encodePattern_notAnyOf(pattern)
+		case 'notAnyOfChars': {
+			return encodePattern_notAnyOfChars(pattern)
 		}
 
 		case 'capture': {
@@ -146,7 +146,7 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 	return `(?:${disjunctionString})`
 }
 
-function encodePattern_notAnyOf(pattern: notAnyOf): string {
+function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 	const members = pattern.members
 
 	if (members.length === 0) {
@@ -430,9 +430,9 @@ export function anyOf(...members: AnyOf['members']): AnyOf {
 	}
 }
 
-export function notAnyOf(...members: notAnyOf['members']): notAnyOf {
+export function notAnyOfChars(...members: NotAnyOfChars['members']): NotAnyOfChars {
 	return {
-		type: 'notAnyOf',
+		type: 'notAnyOfChars',
 		members: members
 	}
 }
@@ -672,7 +672,7 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			return true
 		}
 
-		if (pattern.type === 'specialToken' || pattern.type === 'notAnyOf') {
+		if (pattern.type === 'specialToken' || pattern.type === 'notAnyOfChars') {
 			return false
 		}
 
@@ -859,7 +859,7 @@ export type SinglePattern =
 	FollowedBy |
 	NotFollowedBy |
 	AnyOf |
-	notAnyOf |
+	NotAnyOfChars |
 	Capture |
 	SameAs
 
@@ -919,9 +919,9 @@ export interface AnyOf extends PatternBase {
 	members: Pattern[]
 }
 
-export interface notAnyOf extends PatternBase {
-	type: 'notAnyOf'
-	members: (string | SpecialToken | (string | SpecialToken)[])[]
+export interface NotAnyOfChars extends PatternBase {
+	type: 'notAnyOfChars'
+	members: CharPattern[]
 }
 
 export interface Capture extends PatternBase {
@@ -1034,4 +1034,4 @@ export const newLine: SinglePattern[] = [possibly(carriageReturn), lineFeed]
 export type RepeatedRange = [number, number?]
 
 export type Pattern = SinglePattern | Pattern[]
-
+export type CharPattern = string | SpecialToken | CharPattern[]

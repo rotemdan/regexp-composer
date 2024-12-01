@@ -1,4 +1,4 @@
-import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, notAnyOf, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern } from './Exports.js'
+import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, NotAnyOfChars, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern, notAnyOfChars } from './Exports.js'
 
 const log = console.log
 
@@ -46,7 +46,7 @@ export async function startTest() {
 
 		captureAs('stuff', [
 			possibly(anyOf('v', 'b', 'hello', charRange('a', 'z'), 'world')),
-			notAnyOf('x', 'y', charRange('a', 'z'), '?', '['),
+			notAnyOfChars('x', 'y', charRange('a', 'z'), '?', '['),
 		]),
 
 		repeated([3, 6], sameAs('stuff')),
@@ -72,7 +72,7 @@ export async function startTest() {
 
 	const pattern3 = [
 		anyOf('v', 'b', 'hello', 'friend', charRange('a', 'z'), lineFeed, 't', 'world'),
-		notAnyOf('a', 'b', 'c'),
+		notAnyOfChars('a', 'b', 'c'),
 		unicodeProperty('Letter'),
 		notUnicodeProperty('Digit')
 	]
