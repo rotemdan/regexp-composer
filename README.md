@@ -312,7 +312,7 @@ Encodes to `(?<name>pattern)`.
 
 Matches a pattern to a previous unnamed capturing group.
 
-`groupIndex` must be an integer between `1` and `99`.
+`groupIndex` must be an integer between `1` and `9`.
 
 Encodes to `(?:\groupIndex)`.
 
@@ -323,6 +323,12 @@ Matches a pattern to a previous named capturing group.
 `groupName` must be a string.
 
 Encodes to `\k<groupName>`
+
+### Potential issues with backreference indexes greater than 9
+
+`groupIndex` has been limited to the range of `1..9`, because otherwise, in the case there are more than 9 groups that precede the backreference, the encoded RegExp would produce an ambiguity with a backreference followed by one or more digit literals. For example `\10` can either be interpreted as a backreference to the 10th group, or as a backreference to the 1st group, followed by the literal character `0`.
+
+In the official specification, this ambiguity is resolved by greedily interpreting the sequence `\10` as a backreference if there are 10 or more preceding groups. However, this context-sensitive logic breaks the ability to efficiently parse the regular expression using a context-free grammar! For that reason I've decided to disallow those patterns. For backreferences indexes greater than 10, you can use named backreferences instead.
 
 ## Conditional matching
 

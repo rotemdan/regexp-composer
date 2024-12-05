@@ -459,11 +459,11 @@ export function sameAs(captureGroupNameOrIndex: SameAs['captureGroupNameOrIndex'
 			throw new Error(`'sameAs' capture group name cannot be empty`)
 		}
 	} else if (isNumber(captureGroupNameOrIndex)) {
-		if (captureGroupNameOrIndex < 1 || captureGroupNameOrIndex > 99) {
-			throw new Error(`'sameAs' capture group index can only be between 1 and 99`)
+		if (captureGroupNameOrIndex < 1 || captureGroupNameOrIndex > 9) {
+			throw new Error(`'sameAs' capture group index can only be between 1 and 9. Please use named groups for indexes 10 or higher (see the online documentation for more details about this restriction).`)
 		}
 
-		if (captureGroupNameOrIndex != (captureGroupNameOrIndex | 0)) {
+		if (captureGroupNameOrIndex !== Math.floor(captureGroupNameOrIndex)) {
 			throw new Error(`'sameAs' capture group index cannot be a fractional number.`)
 		}
 	}
