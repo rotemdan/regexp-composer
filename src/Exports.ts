@@ -927,7 +927,7 @@ export interface NotAnyOfChars extends PatternBase {
 export interface Capture extends PatternBase {
 	type: 'capture'
 	name: string | undefined
-	content: Exclude<SinglePattern, string> | SinglePattern[]
+	content: Pattern
 }
 
 export interface SameAs extends PatternBase {
