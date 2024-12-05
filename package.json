@@ -1,6 +1,6 @@
 {
 	"name": "regexp-composer",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Easy-to-use regular expression builder, using a composable, function-oriented style. Supports all regular expression patterns accepted by the JavaScript RegExp engine.",
 	"author": "Rotem Dan",
 	"license": "MIT",
