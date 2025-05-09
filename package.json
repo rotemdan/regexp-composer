@@ -1,6 +1,6 @@
 {
 	"name": "regexp-composer",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Easy-to-use regular expression builder, using a composable, function-oriented style. Supports all regular expression patterns accepted by the JavaScript RegExp engine.",
 	"author": "Rotem Dan",
 	"license": "MIT",
@@ -30,6 +30,6 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"@types/node": "^22.10.1"
+		"@types/node": "^22.15.17"
 	}
 }
