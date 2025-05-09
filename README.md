@@ -154,7 +154,7 @@ anyOf('V', 'B', 'hello', oneOrMore('bye'), 'good', charRange('a', 'z'), lineFeed
 ```
 Encodes to:
 ```
-(?:[vb]|hello|(?:bye)+|good|[a-z\n]|world)
+(?:[VB]|hello|(?:bye)+|good|[a-z\n]|world)
 ```
 
 ### `notAnyOfChars(singleCharPatterns)`
