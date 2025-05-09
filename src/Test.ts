@@ -3,6 +3,18 @@ import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated
 const log = console.log
 
 export async function startTest() {
+	if (false) {
+		const testPattern1 = matches('Hello', {
+			ifPrecededBy: anyOf(inputStart, '$', 'asdf', 'b', 'c')
+		})
+
+		const testPattern1RegExp = buildRegExp(testPattern1)
+
+		console.log(testPattern1RegExp.test('Hello'))
+		console.log(testPattern1RegExp.test(' Hello'))
+		console.log(testPattern1RegExp.test(' $Hello'))
+	}
+
 	const conditionsTestPattern = [
 		inputStart,
 		matches(

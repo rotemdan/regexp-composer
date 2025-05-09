@@ -97,7 +97,7 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 	for (const member of members) {
 		const lastGroup = patternGroups[patternGroups.length - 1]
 
-		if (lastGroup.length === 0 || isSingleCharPattern(member) === isSingleCharPattern(lastGroup[0])) {
+		if (lastGroup.length === 0 || isSingleCharOrClassTokenPattern(member) === isSingleCharOrClassTokenPattern(lastGroup[0])) {
 			lastGroup.push(member)
 		} else {
 			patternGroups.push([member])
@@ -111,7 +111,7 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 			continue
 		}
 
-		if (isSingleCharPattern(patternGroup[0])) {
+		if (isSingleCharOrClassTokenPattern(patternGroup[0])) {
 			const encodedPatternsGroup = patternGroup
 				.map(member => encodePattern(member, false))
 				.filter(value => value.length > 0)
@@ -802,15 +802,27 @@ function escapeStringForRegExp(str: string) {
 		'\\$&')
 }
 
+function isSingleCharOrClassTokenPattern(pattern: Pattern) {
+	return isSingleCharPattern(pattern) || isClassToken(pattern)
+}
+
 function isSingleCharPattern(pattern: Pattern) {
-	return (isString(pattern) && isSingleUnicodeCodepoint(pattern)) || isClassToken(pattern)
+	return (isString(pattern) && isSingleUnicodeCodepoint(pattern))
 }
 
 function isStringOrClassToken(pattern: Pattern): pattern is (string | SpecialToken) {
 	return isString(pattern) || isClassToken(pattern)
 }
 
-function isClassToken(pattern: Pattern): pattern is SpecialToken {
+function isClassToken(pattern: Pattern) {
+	return isSpecialToken(pattern) && !isMetacharacterToken(pattern)
+}
+
+function isMetacharacterToken(pattern: Pattern) {
+	return pattern === inputStart || pattern === inputEnd || pattern === anyChar || pattern === wordBoundary || pattern === nonWordBoundary
+}
+
+function isSpecialToken(pattern: Pattern): pattern is SpecialToken {
 	return typeof pattern === 'object' && !isArray(pattern) && pattern.type == 'specialToken'
 }
 
