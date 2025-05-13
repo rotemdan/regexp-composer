@@ -1,4 +1,4 @@
-import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, NotAnyOfChars, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern, notAnyOfChars } from './Exports.js'
+import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, NotAnyOfChars, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern, notAnyOfChars } from './RegExpComposer.js'
 
 const log = console.log
 
