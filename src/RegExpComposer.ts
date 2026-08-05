@@ -363,8 +363,8 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 		maxCount = range[1] ?? Infinity
 	}
 
-	minCount |= 0
-	maxCount |= 0
+	minCount = Math.trunc(minCount)
+	maxCount = Math.trunc(maxCount)
 
 	return {
 		type: 'repeated',
@@ -375,7 +375,7 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 	}
 }
 
-export function repeatedNonGreedy(pattern: Repeated['content'], range: RepeatedRange): Repeated {
+export function repeatedNonGreedy(range: RepeatedRange, pattern: Repeated['content']): Repeated {
 	if (range.length as number === 0 || range.length > 2) {
 		throw new Error(`Range should either be [min] or [min, max]`)
 	}
@@ -383,8 +383,8 @@ export function repeatedNonGreedy(pattern: Repeated['content'], range: RepeatedR
 	let minCount = range[0]
 	let maxCount = range[1] ?? Infinity
 
-	minCount |= 0
-	maxCount |= 0
+	minCount = Math.trunc(minCount)
+	maxCount = Math.trunc(maxCount)
 
 	return {
 		type: 'repeated',
@@ -520,8 +520,8 @@ export function codepoint(unicodeCodepoint: string | number): SpecialToken {
 	} else {
 		unicodeCodepoint = unicodeCodepoint.toLowerCase()
 
-		if (/^[0-9a-fA-F]{1, 6}$/.test(unicodeCodepoint)) {
-			throw new Error(`Codepoint '${unicodeCodepoint}' is invalid. It can only include between 1 and 6 hexedecimal digits.`)
+		if (!/^[0-9a-f]{1,6}$/.test(unicodeCodepoint)) {
+			throw new Error(`Codepoint '${unicodeCodepoint}' is invalid. It can only include between 1 and 6 hexadecimal digits.`)
 		}
 
 		assertValidNumericCodepoint(Number.parseInt(unicodeCodepoint, 16))
@@ -535,6 +535,14 @@ export function codepoint(unicodeCodepoint: string | number): SpecialToken {
 }
 
 export function charRange(startChar: string, endChar: string): SpecialToken {
+	if (!isSingleUnicodeCodepoint(startChar)) {
+		throw new Error(`Character range is invalid. Starting character '${startChar}' must be a single Unicode codepoint.`)
+	}
+
+	if (!isSingleUnicodeCodepoint(endChar)) {
+		throw new Error(`Character range is invalid. Ending character '${endChar}' must be a single Unicode codepoint.`)
+	}
+
 	if (startChar.codePointAt(0)! > endChar.codePointAt(0)!) {
 		throw new Error(`Character range is invalid. Starting character '${startChar}' has codepoint higher then ending character '${endChar}'.`)
 	}
@@ -832,7 +840,7 @@ function assertValidNumericCodepoint(numericCodepoint: number) {
 	}
 
 	if (numericCodepoint < 0 || numericCodepoint > 1114111) {
-		throw new Error(`Codepoint ${codepoint} is outside the accepted range of 0 to 1,114,111 (inclusive)`)
+		throw new Error(`Codepoint ${numericCodepoint} is outside the accepted range of 0 to 1,114,111 (inclusive)`)
 	}
 }
 
@@ -849,11 +857,15 @@ function isArray(data: any): data is any[] {
 }
 
 function isSingleUnicodeCodepoint(str: string) {
+	if (str.length === 0) {
+		return false
+	}
+
 	for (const char of str) {
 		return char.length === str.length
 	}
 
-	throw new Error('Zero-length string')
+	return false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
