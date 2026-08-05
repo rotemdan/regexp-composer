@@ -11,7 +11,7 @@ An easy-to-use TypeScript / JavaScript regular expression builder library design
 * Automatically wraps complex patterns with non-capturing groups (`(?:pattern)`)
 * Accepts codepoints as integers, in addition to hexadecimal strings (converts as needed)
 * Unifies disjunctions (like `hello|world`) and character class patterns (like `[Va-zX]`) to a single `anyOf` pattern, where they can be freely mixed
-* Special tokens are expressed as safer constants like `inputStart` (`^`), `inputEnd` (`$`), `anyChar` (`*`) and `lineFeed` (`\n`)
+* Special tokens are expressed as safer constants like `inputStart` (`^`), `inputEnd` (`$`), `anyChar` (`.`) and `lineFeed` (`\n`)
 * Ensures character and codepoint ranges are valid. Will error on `charRange('z', 'a')` or `codepointRange('a4', 'a1')`
 * Fast and lightweight
 * Full TypeScript type checking
@@ -284,7 +284,7 @@ Encodes to `\p{propertyName=value}`.
 
 Accepts any character that doesn't match the given Unicode property.
 
-Encodes to `\P{property}]`.
+Encodes to `\P{property}`.
 
 ### `notUnicodeProperty(property, value)`
 
@@ -436,7 +436,7 @@ matches(
 	oneOrMore(unicodeProperty('Letter')),
 	[
 		{ ifPrecededBy: unicodeProperty('Letter') },
-		{ ifPrecededBy: unicodeProperty('Script_Extensions', 'Gothic') }
+		{ ifPrecededBy: unicodeProperty('Script_Extensions', 'Gothic') },
 		{ ifFollowedBy: unicodeProperty('Letter') },
 		{ ifFollowedBy: unicodeProperty('Script_Extensions', 'Greek') },
 	]
@@ -480,7 +480,7 @@ To get consistent results, you can use:
 
 **Non-customizable flags**:
 * `multiline`: the [`m` flag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/multiline), enabling matching of `inputStart` (`^`) tokens to line start, is **always disabled** in the builder, to ensure clear and consistent semantics for `inputStart`
-* `dotAll`: the [`s` flag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/dotAll), causing the `anyChar` (`*`) token to match all tokens, including newlines, is **always enabled** in the builder, to ensure clear and consistent semantics for `anyChar`
+* `dotAll`: the [`s` flag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/dotAll), causing the `anyChar` (`.`) token to match all tokens, including newlines, is **always enabled** in the builder, to ensure clear and consistent semantics for `anyChar`
 * `unicode`: the [`u` flag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/unicode), enabling Unicode support, is **always enabled** in the builder, as it is required by the patterns `codepoint`, `codepointRange`, `unicodeProperty` and `notUnicodeProperty`
 * `unicodeSets`: the [`v` flag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/unicodeSets), enabling Unicode set support, like `\p{Script_Extensions=Greek}&&\p{Letter}`, is currently **always disabled** (it cannot be enabled at the same time when `u` is enabled), but is likely to become used in the future
 
