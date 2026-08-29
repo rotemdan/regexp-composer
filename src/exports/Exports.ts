@@ -827,7 +827,13 @@ function isClassToken(pattern: Pattern) {
 }
 
 function isMetacharacterToken(pattern: Pattern) {
-	return pattern === inputStart || pattern === inputEnd || pattern === anyChar || pattern === wordBoundary || pattern === nonWordBoundary
+	return isSpecialToken(pattern) && (
+		pattern.name === 'inputStart' ||
+		pattern.name === 'inputEnd' ||
+		pattern.name === 'anyChar' ||
+		pattern.name === 'wordBoundary' ||
+		pattern.name === 'nonWordBoundary'
+	)
 }
 
 function isSpecialToken(pattern: Pattern): pattern is SpecialToken {
