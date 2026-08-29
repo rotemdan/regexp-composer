@@ -133,7 +133,17 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 				.map(member => encodePattern(member))
 				.filter(value => value.length > 0)
 
-			disjunctionMemberStrings.push(...memberStrings)
+			if (memberStrings.length === 0 && patternGroup.length > 0) {
+				// Every member of this run encoded to the empty string (e.g.
+				// `possibly('')`, `zeroOrMore('')`, an empty-string literal, …).
+				// This run still represents a valid alternative that matches the
+				// empty string, so we must keep an empty alternative (and thus the
+				// surrounding `|`) rather than silently dropping the branch and
+				// changing the set of strings the pattern can match.
+				disjunctionMemberStrings.push('')
+			} else {
+				disjunctionMemberStrings.push(...memberStrings)
+			}
 		}
 	}
 
@@ -164,7 +174,14 @@ function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 			throw new Error(`The string pattern ${member} is not a single codepoint and cannot be included in a negated character class.`)
 		}
 
-		encodedElements.push(encodePattern(member, false))
+		// A literal `-` must be escaped inside a character class, otherwise it is
+		// interpreted as the range operator (e.g. `[^a-b]` would exclude `a`/`b` but
+		// allow `-`).
+		if (isString(member) && member === '-') {
+			encodedElements.push('\\-')
+		} else {
+			encodedElements.push(encodePattern(member, false))
+		}
 	}
 
 	return `[^${encodedElements.join('')}]`
@@ -667,7 +684,10 @@ export function isPatternOptional(pattern: Pattern): boolean {
 
 	function isOptional(pattern: Pattern): boolean {
 		if (isString(pattern)) {
-			return false
+			// The empty string pattern is the empty regex, which matches the empty
+			// string and is therefore optional. Any non-empty literal never
+			// matches the empty string.
+			return pattern.length === 0
 		}
 
 		if (isArray(pattern)) {
@@ -681,7 +701,15 @@ export function isPatternOptional(pattern: Pattern): boolean {
 		}
 
 		if (pattern.type === 'specialToken' || pattern.type === 'notAnyOfChars') {
-			return false
+			// A leaf token matches the empty string iff the regex it compiles to
+			// matches "". The library's contract for "optional" is exactly
+			// `buildRegExp(pattern).test('')` (see the suite's sanity checks), so
+			// we delegate to the engine rather than guessing. Empirically the
+			// special tokens whose `.test('')` is true are `^` (inputStart),
+			// `$` (inputEnd) and `\B` (nonWordBoundary) — note that `\b` is
+			// zero-width yet does NOT match the empty string, while `[^…]` and
+			// character classes never do.
+			return buildRegExp(pattern).test('')
 		}
 
 		if (pattern.type === 'possibly' || pattern.type === 'zeroOrMore') {
@@ -689,7 +717,6 @@ export function isPatternOptional(pattern: Pattern): boolean {
 		}
 
 		if (pattern.type === 'oneOrMore' ||
-			pattern.type === 'repeated' ||
 			pattern.type === 'precededBy' ||
 			pattern.type === 'notPrecededBy' ||
 			pattern.type === 'followedBy' ||
@@ -698,10 +725,26 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			return isOptional(pattern.content)
 		}
 
+		if (pattern.type === 'repeated') {
+			// A repetition with a minimum count of 0 always matches the empty string
+			// (zero occurrences), regardless of whether its content can.
+			if (pattern.minCount === 0) {
+				return true
+			}
+
+			return isOptional(pattern.content)
+		}
+
 		if (pattern.type === 'capture') {
+			// Reserve the slot in pre-order so that the numeric index matches the
+			// capture group numbering produced by the regex engine (which counts
+			// opening parentheses in document order).
+			captureGroupLookup.push(false)
+			const groupIndex = captureGroupLookup.length - 1
+
 			const isGroupOptional = isOptional(pattern.content)
 
-			captureGroupLookup.push(isGroupOptional)
+			captureGroupLookup[groupIndex] = isGroupOptional
 
 			if (pattern.name) {
 				namedCaptureGroupLookup.set(pattern.name, isGroupOptional)
@@ -711,20 +754,23 @@ export function isPatternOptional(pattern: Pattern): boolean {
 		}
 
 		if (pattern.type === 'anyOf') {
+			// A disjunction matches the empty string if ANY of its alternatives can
+			// (at least one member is optional), not only when all of them are.
 			for (const member of pattern.members) {
-				if (!isOptional(member)) {
-					return false
+				if (isOptional(member)) {
+					return true
 				}
 			}
 
-			return true
+			return false
 		}
 
 		if (pattern.type === 'sameAs') {
 			const nameOrIndex = pattern.captureGroupNameOrIndex
 
 			if (isNumber(nameOrIndex)) {
-				const lookupResult = captureGroupLookup[nameOrIndex]
+				// Capture group indices are 1-based, while the lookup array is 0-based.
+				const lookupResult = captureGroupLookup[nameOrIndex - 1]
 
 				if (lookupResult === undefined) {
 					throw new Error(`Couldn't resolve backreference to a capture group at index ${nameOrIndex}`)
