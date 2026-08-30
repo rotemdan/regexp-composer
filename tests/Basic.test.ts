@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import * as R from '../../exports/Exports.js'
+import * as R from '../src/exports/Exports.ts'
 
 test(`Correctly applies 'matches' with 'except' clause`, () => {
 	const conditionTest = R.buildRegExp([

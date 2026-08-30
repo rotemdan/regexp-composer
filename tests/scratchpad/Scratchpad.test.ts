@@ -1,11 +1,11 @@
 import { test, expect } from 'vitest'
 import fs from 'fs'
 
-import * as R from '../../../exports/Exports.js'
+import * as R from '../../src/exports/Exports.ts'
 
 // Agents: use this to run temporary tests, and any file output to `./out`
 
-const baseOutPath = 'src/tests/vitest/scratchpad/out/'
+const baseOutPath = 'tests/scratchpad/out/'
 
 // ---------------------------------------------------------------------------
 // Reported-style identity bug: a pattern object that is *structurally* an

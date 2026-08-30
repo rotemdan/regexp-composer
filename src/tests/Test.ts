@@ -1,4 +1,6 @@
-import { buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, NotAnyOfChars, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern, notAnyOfChars } from '../../exports/Exports.js'
+import {
+	buildRegExp, anyOf, captureAs, charRange, oneOrMore, possibly, repeated, inputStart, whitespace, NotAnyOfChars, sameAs, unicodeProperty, notUnicodeProperty, codepoint, inputEnd, matches, newLine, lineFeed, encodePattern, notAnyOfChars
+} from '../exports/Exports.js'
 
 const log = console.log
 
@@ -19,15 +21,15 @@ export async function startTest() {
 		inputStart,
 		matches(
 			oneOrMore(unicodeProperty('Letter')), [
-				{
-					except: anyOf('Cat', 'Dog'),
-					ifNotPrecededBy: charRange('0', '9'),
-					ifNotFollowedBy: anyOf('?', '!')
-				},
-				{
-					except: anyOf('Horse', 'Sheep')
-				}
-			]
+			{
+				except: anyOf('Cat', 'Dog'),
+				ifNotPrecededBy: charRange('0', '9'),
+				ifNotFollowedBy: anyOf('?', '!')
+			},
+			{
+				except: anyOf('Horse', 'Sheep')
+			}
+		]
 		),
 		inputEnd
 	]
@@ -110,7 +112,7 @@ export async function startTest() {
 	log('')
 
 	{
-		const conditionTest = buildRegExp([inputStart, matches(oneOrMore(charRange('0', '9')), { except: '23'})])
+		const conditionTest = buildRegExp([inputStart, matches(oneOrMore(charRange('0', '9')), { except: '23' })])
 
 		const a = conditionTest.test('12344')
 		const b = conditionTest.test('233')

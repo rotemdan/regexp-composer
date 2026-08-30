@@ -5,6 +5,8 @@ export default defineConfig({
 		reporters: ['default'],
 		disableConsoleIntercept: true,
 
+		include: ['tests/**/*.test.ts'],
+
 		exclude: [
 			...configDefaults.exclude,
 			'**/node_modules/**',
