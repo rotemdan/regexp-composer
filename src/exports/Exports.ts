@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Main API:
+// Main build function
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export function buildRegExp(pattern: Pattern, buildOptions?: Partial<BuildOptions>): RegExp {
 	const options: BuildOptions = { ...defaultBuildOptions, ...buildOptions }
@@ -11,7 +11,7 @@ export function buildRegExp(pattern: Pattern, buildOptions?: Partial<BuildOption
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Encoder functions:
+// Encoder functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export function encodePattern(pattern: Pattern, wrapRangeTokens = true): string {
 	if (isString(pattern)) {
@@ -129,11 +129,10 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 				disjunctionMemberStrings.push(charClassString)
 			}
 		} else {
-			const memberStrings = patternGroup
-				.map(member => encodePattern(member))
-				.filter(value => value.length > 0)
+			const rawMemberStrings = patternGroup.map(member => encodePattern(member))
+			const filteredMemberStrings = rawMemberStrings.filter(value => value.length > 0)
 
-			if (memberStrings.length === 0 && patternGroup.length > 0) {
+			if (filteredMemberStrings.length === 0 && patternGroup.length > 0) {
 				// Every member of this run encoded to the empty string (e.g.
 				// `possibly('')`, `zeroOrMore('')`, an empty-string literal, …).
 				// This run still represents a valid alternative that matches the
@@ -141,8 +140,17 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 				// surrounding `|`) rather than silently dropping the branch and
 				// changing the set of strings the pattern can match.
 				disjunctionMemberStrings.push('')
+			} else if (rawMemberStrings.some(value => value.length === 0)) {
+				// This run is mixed: some members matched empty (e.g. `''`) and
+				// some did not. The empty members represent an extra alternative
+				// that matches the empty string, so we keep both the non-empty
+				// alternatives and an additional empty alternative. Without this
+				// the `|` that realizes the empty branch is dropped, changing
+				// the language (e.g. `anyOf('a','')` would become `(?:a)` and
+				// no longer match `""`).
+				disjunctionMemberStrings.push(...filteredMemberStrings, '')
 			} else {
-				disjunctionMemberStrings.push(...memberStrings)
+				disjunctionMemberStrings.push(...filteredMemberStrings)
 			}
 		}
 	}
@@ -166,12 +174,12 @@ function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 	const encodedElements: string[] = []
 
 	for (const member of members) {
-		if (!isStringOrClassToken(member)) {
-			throw new Error(`The pattern ${member} is not a single codepoint or class token and cannot be included in a negated character class.`)
-		}
+		if (!isSingleCharOrClassTokenPattern(member)) {
+			if (isString(member)) {
+				throw new Error(`The string pattern ${member} is not a single codepoint and cannot be included in a negated character class.`)
+			}
 
-		if (isString(member) && !isSingleUnicodeCodepoint(member)) {
-			throw new Error(`The string pattern ${member} is not a single codepoint and cannot be included in a negated character class.`)
+			throw new Error(`The pattern ${member} is not a single codepoint or class token and cannot be included in a negated character class.`)
 		}
 
 		// A literal `-` must be escaped inside a character class, otherwise it is
@@ -194,7 +202,7 @@ function encodePattern_possibly(pattern: Possibly): string {
 		return ''
 	}
 
-	if (isStringOrClassToken(pattern.content)) {
+	if (isSingleCharOrClassTokenPattern(pattern.content)) {
 		return `${contentString}?`
 	} else {
 		return `(?:${contentString})?`
@@ -210,7 +218,7 @@ function encodePattern_zeroOrMore(pattern: ZeroOrMore): string {
 
 	const greedySuffix = pattern.greedy ? '' : '?'
 
-	if (isStringOrClassToken(pattern.content)) {
+	if (isSingleCharOrClassTokenPattern(pattern.content)) {
 		return `${contentString}*${greedySuffix}`
 	} else {
 		return `(?:${contentString})*${greedySuffix}`
@@ -226,7 +234,7 @@ function encodePattern_oneOrMore(pattern: OneOrMore): string {
 
 	const greedySuffix = pattern.greedy ? '' : '?'
 
-	if (isStringOrClassToken(pattern.content)) {
+	if (isSingleCharOrClassTokenPattern(pattern.content)) {
 		return `${contentString}+${greedySuffix}`
 	} else {
 		return `(?:${contentString})+${greedySuffix}`
@@ -367,8 +375,12 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 	if (typeof countOrRange === 'number') {
 		const count = countOrRange
 
-		minCount = count
-		maxCount = count
+		if (!Number.isFinite(count)) {
+			throw new Error(`Repeated count must be a finite number (got ${count})`)
+		}
+
+		minCount = Math.trunc(count)
+		maxCount = Math.trunc(count)
 	} else {
 		const range = countOrRange
 
@@ -376,12 +388,11 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 			throw new Error(`Range should either be [min] or [min, max]`)
 		}
 
-		minCount = range[0]
-		maxCount = range[1] ?? Infinity
+		minCount = Math.trunc(range[0] as number)
+		maxCount = range[1] === undefined ? Infinity : Math.trunc(range[1] as number)
 	}
 
-	minCount = Math.trunc(minCount)
-	maxCount = Math.trunc(maxCount)
+	assertValidRepeatBounds(minCount, maxCount)
 
 	return {
 		type: 'repeated',
@@ -392,16 +403,31 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 	}
 }
 
-export function repeatedNonGreedy(range: RepeatedRange, pattern: Repeated['content']): Repeated {
-	if (range.length as number === 0 || range.length > 2) {
-		throw new Error(`Range should either be [min] or [min, max]`)
+export function repeatedNonGreedy(count: number, pattern: Repeated['content']): Repeated
+export function repeatedNonGreedy(range: RepeatedRange, pattern: Repeated['content']): Repeated
+export function repeatedNonGreedy(countOrRange: number | RepeatedRange, pattern: Repeated['content']): Repeated {
+	let minCount: number
+	let maxCount: number
+
+	if (typeof countOrRange === 'number') {
+		if (!Number.isFinite(countOrRange)) {
+			throw new Error(`Repeated count must be a finite number (got ${countOrRange})`)
+		}
+
+		minCount = Math.trunc(countOrRange)
+		maxCount = Math.trunc(countOrRange)
+	} else {
+		const range = countOrRange
+
+		if (range.length as number === 0 || range.length > 2) {
+			throw new Error(`Range should either be [min] or [min, max]`)
+		}
+
+		minCount = Math.trunc(range[0] as number)
+		maxCount = range[1] === undefined ? Infinity : Math.trunc(range[1] as number)
 	}
 
-	let minCount = range[0]
-	let maxCount = range[1] ?? Infinity
-
-	minCount = Math.trunc(minCount)
-	maxCount = Math.trunc(maxCount)
+	assertValidRepeatBounds(minCount, maxCount)
 
 	return {
 		type: 'repeated',
@@ -463,6 +489,14 @@ export function capture(pattern: Capture['content']): Capture {
 }
 
 export function captureAs(name: string, pattern: Capture['content']): Capture {
+	if (name.length === 0) {
+		throw new Error(`Capture group name cannot be empty`)
+	}
+
+	if (!/^[A-Za-z][A-Za-z0-9]*$/.test(name)) {
+		throw new Error(`Capture group name '${name}' is invalid. It must match /^[A-Za-z][A-Za-z0-9]*$/`)
+	}
+
 	return {
 		type: 'capture',
 		name,
@@ -535,13 +569,8 @@ export function codepoint(unicodeCodepoint: string | number): SpecialToken {
 
 		unicodeCodepoint = unicodeCodepoint.toString(16)
 	} else {
+		assertValidHexCodepointString(unicodeCodepoint)
 		unicodeCodepoint = unicodeCodepoint.toLowerCase()
-
-		if (!/^[0-9a-f]{1,6}$/.test(unicodeCodepoint)) {
-			throw new Error(`Codepoint '${unicodeCodepoint}' is invalid. It can only include between 1 and 6 hexadecimal digits.`)
-		}
-
-		assertValidNumericCodepoint(Number.parseInt(unicodeCodepoint, 16))
 	}
 
 	return {
@@ -583,11 +612,17 @@ export function codepointRange(startHexCode: string, endHexCode: string): Specia
 export function codepointRange(startIntegerCode: number, endIntegerCode: number): SpecialToken
 export function codepointRange(start: string | number, end: string | number): SpecialToken {
 	if (isNumber(start)) {
+		assertValidNumericCodepoint(start)
 		start = start.toString(16)
+	} else {
+		assertValidHexCodepointString(start)
 	}
 
 	if (isNumber(end)) {
+		assertValidNumericCodepoint(end)
 		end = end.toString(16)
+	} else {
+		assertValidHexCodepointString(end)
 	}
 
 	start = start.toUpperCase()
@@ -605,7 +640,7 @@ export function codepointRange(start: string | number, end: string | number): Sp
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Match patterns:
+// Match patterns
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 interface MatchesConditions {
 	except?: Pattern
@@ -676,7 +711,7 @@ export function matches(pattern: Pattern, conditionsOrConditionsArray: MatchesCo
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Detect if a pattern is optional:
+// Optional pattern analysis
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export function isPatternOptional(pattern: Pattern): boolean {
 	const captureGroupLookup: boolean[] = []
@@ -718,11 +753,22 @@ export function isPatternOptional(pattern: Pattern): boolean {
 
 		if (pattern.type === 'oneOrMore' ||
 			pattern.type === 'precededBy' ||
-			pattern.type === 'notPrecededBy' ||
-			pattern.type === 'followedBy' ||
-			pattern.type === 'notFollowedBy') {
+			pattern.type === 'followedBy') {
 
 			return isOptional(pattern.content)
+		}
+
+		if (pattern.type === 'notPrecededBy' ||
+			pattern.type === 'notFollowedBy') {
+
+			// An empty lookaround is elided by the encoder (it emits ""), so it
+			// matches the empty string regardless of logical negation. Otherwise
+			// a negative lookaround matches "" iff its content does NOT.
+			if (encodePattern(pattern.content) === '') {
+				return true
+			}
+
+			return !isOptional(pattern.content)
 		}
 
 		if (pattern.type === 'repeated') {
@@ -756,13 +802,16 @@ export function isPatternOptional(pattern: Pattern): boolean {
 		if (pattern.type === 'anyOf') {
 			// A disjunction matches the empty string if ANY of its alternatives can
 			// (at least one member is optional), not only when all of them are.
+			// Evaluate all members eagerly so an invalid back-reference is never
+			// hidden by short-circuiting on a preceding optional member.
+			let anyOptional = false
 			for (const member of pattern.members) {
 				if (isOptional(member)) {
-					return true
+					anyOptional = true
 				}
 			}
 
-			return false
+			return anyOptional
 		}
 
 		if (pattern.type === 'sameAs') {
@@ -795,7 +844,7 @@ export function isPatternOptional(pattern: Pattern): boolean {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Build options:
+// Build options
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 function getRegExpFlagsForOptions(options: BuildOptions) {
 	let flagsString = ""
@@ -844,6 +893,41 @@ interface BuildOptions {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Assertions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+function isValidHexCodepointString(hex: string): boolean {
+	return /^[0-9a-f]{1,6}$/.test(hex)
+}
+
+function assertValidHexCodepointString(rawHex: string): void {
+	const normalized = rawHex.toLowerCase()
+
+	if (!isValidHexCodepointString(normalized)) {
+		throw new Error(`Codepoint '${rawHex}' is invalid. It can only include between 1 and 6 hexadecimal digits.`)
+	}
+
+	assertValidNumericCodepoint(Number.parseInt(normalized, 16))
+}
+
+function assertValidRepeatBounds(minCount: number, maxCount: number): void {
+	if (!Number.isFinite(minCount) && minCount !== Infinity) {
+		throw new Error(`Repeated minCount is invalid: ${minCount}`)
+	}
+
+	if (!Number.isFinite(maxCount) && maxCount !== Infinity) {
+		throw new Error(`Repeated maxCount is invalid: ${maxCount}`)
+	}
+
+	if (minCount < 0 || maxCount < 0) {
+		throw new Error(`Repeated counts must be non-negative (got [${minCount}, ${maxCount}])`)
+	}
+
+	if (maxCount !== Infinity && minCount > maxCount) {
+		throw new Error(`Repeated range is invalid: minCount ${minCount} is greater than maxCount ${maxCount}`)
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 function escapeStringForRegExp(str: string) {
@@ -862,10 +946,6 @@ function isSingleCharOrClassTokenPattern(pattern: Pattern) {
 
 function isSingleCharPattern(pattern: Pattern) {
 	return (isString(pattern) && isSingleUnicodeCodepoint(pattern))
-}
-
-function isStringOrClassToken(pattern: Pattern): pattern is (string | SpecialToken) {
-	return isString(pattern) || isClassToken(pattern)
 }
 
 function isClassToken(pattern: Pattern) {
@@ -921,7 +1001,7 @@ function isSingleUnicodeCodepoint(str: string) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Pattern type definitions:
+// Pattern type definitions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export type SinglePattern =
 	string |
@@ -1018,7 +1098,7 @@ export interface SpecialToken extends PatternBase {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Special token constants:
+// Special token constants
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export const inputStart: SpecialToken = {
 	type: 'specialToken',
