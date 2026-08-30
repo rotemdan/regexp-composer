@@ -1,4 +1,4 @@
-import { encodePattern } from '../regexp/Encoder.js'
+import { encodePattern, escapeCharForCharClass } from '../regexp/Encoder.js'
 import { Possibly, ZeroOrMore, OneOrMore, Repeated, RepeatedRange, PrecededBy, NotPrecededBy, FollowedBy, NotFollowedBy, AnyOf, NotAnyOfChars, Capture, SameAs, SpecialToken, Pattern, SinglePattern } from './Types.js'
 import { isString, isNumber, isSingleUnicodeCodepoint } from './Predicates.js'
 
@@ -125,34 +125,6 @@ export function repeatedNonGreedy(countOrRange: number | RepeatedRange, pattern:
 		maxCount,
 		content: pattern,
 		greedy: false
-	}
-}
-
-function precededBy(pattern: PrecededBy['content']): PrecededBy {
-	return {
-		type: 'precededBy',
-		content: pattern
-	}
-}
-
-function notPrecededBy(pattern: NotPrecededBy['content']): NotPrecededBy {
-	return {
-		type: 'notPrecededBy',
-		content: pattern
-	}
-}
-
-function followedBy(pattern: FollowedBy['content']): FollowedBy {
-	return {
-		type: 'followedBy',
-		content: pattern
-	}
-}
-
-function notFollowedBy(pattern: NotFollowedBy['content']): NotFollowedBy {
-	return {
-		type: 'notFollowedBy',
-		content: pattern
 	}
 }
 
@@ -283,13 +255,12 @@ export function charRange(startChar: string, endChar: string): SpecialToken {
 		throw new Error(`Character range is invalid. Starting character '${startChar}' has codepoint higher then ending character '${endChar}'.`)
 	}
 
-	if (startChar === '-') {
-		startChar = '\\-'
-	}
-
-	if (endChar === '-') {
-		endChar = '\\-'
-	}
+	// The resulting token is emitted inside a character class (`[START-END]` or,
+	// when inlined into a larger class, as `START-END`). Escaping is mandatory
+	// here: an unescaped `^` would negate the whole class (`[^-a]`), an unescaped
+	// `]` would terminate it (`[]-a]`) and an unescaped `\` corrupts the syntax.
+	startChar = escapeCharForCharClass(startChar)
+	endChar = escapeCharForCharClass(endChar)
 
 	return {
 		type: 'specialToken',
@@ -401,6 +372,38 @@ export function matches(pattern: Pattern, conditionsOrConditionsArray: MatchesCo
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Unexported builders used only internally in `matches`
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function precededBy(pattern: PrecededBy['content']): PrecededBy {
+	return {
+		type: 'precededBy',
+		content: pattern
+	}
+}
+
+function notPrecededBy(pattern: NotPrecededBy['content']): NotPrecededBy {
+	return {
+		type: 'notPrecededBy',
+		content: pattern
+	}
+}
+
+function followedBy(pattern: FollowedBy['content']): FollowedBy {
+	return {
+		type: 'followedBy',
+		content: pattern
+	}
+}
+
+function notFollowedBy(pattern: NotFollowedBy['content']): NotFollowedBy {
+	return {
+		type: 'notFollowedBy',
+		content: pattern
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Assertions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -419,7 +422,8 @@ function isValidHexCodepointString(hex: string): boolean {
 }
 
 function assertValidRepeatBounds(minCount: number, maxCount: number): void {
-	if (!Number.isFinite(minCount) && minCount !== Infinity) {
+	// An infinite minimum count is meaningless (and would encode as `{Infinity}`)
+	if (!Number.isFinite(minCount)) {
 		throw new Error(`Repeated minCount is invalid: ${minCount}`)
 	}
 

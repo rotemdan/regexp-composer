@@ -1,25 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import * as R from '../src/exports/Exports.ts'
 
-function matchesEmpty(pattern: any): boolean {
-	return R.buildRegExp(pattern).test('')
-}
-
-function expectOptionalMatchesEngine(pattern: any, label?: string) {
-	const viaEngine = matchesEmpty(pattern)
-	const viaPredicate = R.isPatternOptional(pattern)
-	if (viaPredicate !== viaEngine) {
-		// Surface the actual source for debugging
-		const src = (() => {
-			try { return R.encodePattern(pattern) } catch { return '<encode error>' }
-		})()
-		throw new Error(
-			`isPatternOptional mismatch${label ? ` (${label})` : ''}: predicate=${viaPredicate} engine=${viaEngine} src=${src} pattern=${JSON.stringify(pattern).slice(0, 400)}`
-		)
-	}
-	expect(viaPredicate).toBe(viaEngine)
-}
-
 // Generate a bunch of patterns programmatically and assert agreement
 describe('isPatternOptional agrees with engine on generated patterns', () => {
 	const leafTokens: any[] = [
@@ -122,3 +103,22 @@ describe('isPatternOptional agrees with engine on generated patterns', () => {
 		expectOptionalMatchesEngine(R.repeated(1, R.anyOf('', 'a')), 'repeated 1 anyOf with empty')
 	})
 })
+
+function matchesEmpty(pattern: any): boolean {
+	return R.buildRegExp(pattern).test('')
+}
+
+function expectOptionalMatchesEngine(pattern: any, label?: string) {
+	const viaEngine = matchesEmpty(pattern)
+	const viaPredicate = R.isPatternOptional(pattern)
+	if (viaPredicate !== viaEngine) {
+		// Surface the actual source for debugging
+		const src = (() => {
+			try { return R.encodePattern(pattern) } catch { return '<encode error>' }
+		})()
+		throw new Error(
+			`isPatternOptional mismatch${label ? ` (${label})` : ''}: predicate=${viaPredicate} engine=${viaEngine} src=${src} pattern=${JSON.stringify(pattern).slice(0, 400)}`
+		)
+	}
+	expect(viaPredicate).toBe(viaEngine)
+}

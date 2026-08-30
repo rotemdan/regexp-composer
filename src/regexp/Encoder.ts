@@ -176,7 +176,7 @@ function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 		// A literal `-` must be escaped inside a character class, otherwise it is
 		// interpreted as the range operator (e.g. `[^a-b]` would exclude `a`/`b` but
 		// allow `-`).
-		if (isString(member) && member === '-') {
+		if (member === '-') {
 			encodedElements.push('\\-')
 		} else {
 			encodedElements.push(encodePattern(member, false))
@@ -327,4 +327,15 @@ function escapeStringForRegExp(str: string) {
 	return str.replaceAll(
 		/[.*+?^${}()|[\]\\]/g,
 		'\\$&')
+}
+
+// Escapes a single character so it is safe to embed in a character class,
+// either as a `charRange` endpoint or as an element of a larger class.
+// Built on top of `escapeStringForRegExp` (which already covers `^`, `]`, `\`
+// and every other metacharacter), adding only the `-` case which is a
+// metacharacter exclusively inside character classes.
+export function escapeCharForCharClass(char: string): string {
+	const escaped = escapeStringForRegExp(char)
+
+	return escaped === '-' ? '\\-' : escaped
 }

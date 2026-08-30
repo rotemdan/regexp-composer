@@ -4,6 +4,10 @@ import {
 
 const log = console.log
 
+// This file contains older manual tests.
+//
+// The newer tests are now using vitest and located in `/tests`
+
 export async function startTest() {
 	if (false) {
 		const testPattern1 = matches('Hello', {

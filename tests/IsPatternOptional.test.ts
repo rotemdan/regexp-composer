@@ -1,12 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import * as R from '../src/exports/Exports.ts'
 
-// Helper: ground truth — what the engine actually does on ""
-
-function matchesEmpty(pattern: any): boolean {
-	return R.buildRegExp(pattern).test('')
-}
-
 // ── Basic contract ──────────────────────────────────────────────────────────
 
 describe('isPatternOptional — basic contract', () => {
@@ -131,3 +125,9 @@ describe('isPatternOptional — special tokens agree with engine', () => {
 		expect(R.isPatternOptional(R.notAnyOfChars('a'))).toBe(false)
 	})
 })
+
+// Helper: ground truth — what the engine actually does on ""
+
+function matchesEmpty(pattern: any): boolean {
+	return R.buildRegExp(pattern).test('')
+}

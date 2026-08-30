@@ -1,12 +1,8 @@
 import { describe, test, expect } from 'vitest'
 import * as R from '../src/exports/Exports.ts'
 
-/**
- * These tests are deliberately adversarial: they enumerate combinations the
- * original suite and ad-hoc usage never exercised. Any failure here = a real bug.
- */
-
-function matchesEmpty(p: any) { return R.buildRegExp(p).test('') }
+// These tests are deliberately adversarial: they enumerate combinations the
+// original suite and ad-hoc usage never exercised. Any failure here = a real bug.
 
 // Exhaustively check isPatternOptional vs engine for every composable shape
 describe('hunter: isPatternOptional vs engine — exhaustive combos', () => {
@@ -97,3 +93,5 @@ describe('hunter: capture / sameAs isPatternOptional with nesting', () => {
 		expect(() => R.isPatternOptional(R.anyOf(R.possibly(''), R.sameAs('g')))).toThrow(/named capture group/)
 	})
 })
+
+function matchesEmpty(p: any) { return R.buildRegExp(p).test('') }
