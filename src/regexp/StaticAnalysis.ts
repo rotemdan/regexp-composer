@@ -1,27 +1,27 @@
 import { buildRegExp } from './Builder.js'
 import { encodePattern } from './Encoder.js'
-import { Pattern } from './Types.js'
+import { PatternExpression } from './Types.js'
 import { isArray, isNumber, isString } from './Predicates.js'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Static analysis
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Analyzes if a pattern is optional by recursively inspecting its subpatterns
-export function isPatternOptional(pattern: Pattern): boolean {
+// Analyzes if a pattern expression is optional by recursively inspecting its subpatterns
+export function isPatternOptional(patternExpression: PatternExpression): boolean {
 	const captureGroupLookup: boolean[] = []
 	const namedCaptureGroupLookup = new Map<string, boolean>()
 
-	function isOptional(pattern: Pattern): boolean {
-		if (isString(pattern)) {
+	function isOptional(patternExpression: PatternExpression): boolean {
+		if (isString(patternExpression)) {
 			// The empty string pattern is the empty regex, which matches the empty
 			// string and is therefore optional. Any non-empty literal never
 			// matches the empty string.
-			return pattern.length === 0
+			return patternExpression.length === 0
 		}
 
-		if (isArray(pattern)) {
-			for (const element of pattern) {
+		if (isArray(patternExpression)) {
+			for (const element of patternExpression) {
 				if (!isOptional(element)) {
 					return false
 				}
@@ -30,7 +30,7 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			return true
 		}
 
-		if (pattern.type === 'specialToken' || pattern.type === 'notAnyOfChars') {
+		if (patternExpression.type === 'specialToken' || patternExpression.type === 'notAnyOfChars') {
 			// A leaf token matches the empty string iff the regex it compiles to
 			// matches "". The library's contract for "optional" is exactly
 			// `buildRegExp(pattern).test('')` (see the suite's sanity checks), so
@@ -39,68 +39,68 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			// `$` (inputEnd) and `\B` (nonWordBoundary) — note that `\b` is
 			// zero-width yet does NOT match the empty string, while `[^…]` and
 			// character classes never do.
-			return buildRegExp(pattern).test('')
+			return buildRegExp(patternExpression).test('')
 		}
 
-		if (pattern.type === 'possibly' || pattern.type === 'zeroOrMore') {
+		if (patternExpression.type === 'possibly' || patternExpression.type === 'zeroOrMore') {
 			return true
 		}
 
-		if (pattern.type === 'oneOrMore' ||
-			pattern.type === 'precededBy' ||
-			pattern.type === 'followedBy') {
+		if (patternExpression.type === 'oneOrMore' ||
+			patternExpression.type === 'precededBy' ||
+			patternExpression.type === 'followedBy') {
 
-			return isOptional(pattern.content)
+			return isOptional(patternExpression.content)
 		}
 
-		if (pattern.type === 'notPrecededBy' ||
-			pattern.type === 'notFollowedBy') {
+		if (patternExpression.type === 'notPrecededBy' ||
+			patternExpression.type === 'notFollowedBy') {
 
 			// An empty lookaround is elided by the encoder (it emits ""), so it
 			// matches the empty string regardless of logical negation. Otherwise
 			// a negative lookaround matches "" iff its content does NOT.
-			if (encodePattern(pattern.content) === '') {
+			if (encodePattern(patternExpression.content) === '') {
 				return true
 			}
 
-			return !isOptional(pattern.content)
+			return !isOptional(patternExpression.content)
 		}
 
-		if (pattern.type === 'repeated') {
+		if (patternExpression.type === 'repeated') {
 			// A repetition with a minimum count of 0 always matches the empty string
 			// (zero occurrences), regardless of whether its content can.
-			if (pattern.minCount === 0) {
+			if (patternExpression.minCount === 0) {
 				return true
 			}
 
-			return isOptional(pattern.content)
+			return isOptional(patternExpression.content)
 		}
 
-		if (pattern.type === 'capture') {
+		if (patternExpression.type === 'capture') {
 			// Reserve the slot in pre-order so that the numeric index matches the
 			// capture group numbering produced by the regex engine (which counts
 			// opening parentheses in document order).
 			captureGroupLookup.push(false)
 			const groupIndex = captureGroupLookup.length - 1
 
-			const isGroupOptional = isOptional(pattern.content)
+			const isGroupOptional = isOptional(patternExpression.content)
 
 			captureGroupLookup[groupIndex] = isGroupOptional
 
-			if (pattern.name) {
-				namedCaptureGroupLookup.set(pattern.name, isGroupOptional)
+			if (patternExpression.name) {
+				namedCaptureGroupLookup.set(patternExpression.name, isGroupOptional)
 			}
 
 			return isGroupOptional
 		}
 
-		if (pattern.type === 'anyOf') {
+		if (patternExpression.type === 'anyOf') {
 			// A disjunction matches the empty string if ANY of its alternatives can
 			// (at least one member is optional), not only when all of them are.
 			// Evaluate all members eagerly so an invalid back-reference is never
 			// hidden by short-circuiting on a preceding optional member.
 			let anyOptional = false
-			for (const member of pattern.members) {
+			for (const member of patternExpression.members) {
 				if (isOptional(member)) {
 					anyOptional = true
 				}
@@ -109,8 +109,8 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			return anyOptional
 		}
 
-		if (pattern.type === 'sameAs') {
-			const nameOrIndex = pattern.captureGroupNameOrIndex
+		if (patternExpression.type === 'sameAs') {
+			const nameOrIndex = patternExpression.captureGroupNameOrIndex
 
 			if (isNumber(nameOrIndex)) {
 				// Capture group indices are 1-based, while the lookup array is 0-based.
@@ -132,8 +132,8 @@ export function isPatternOptional(pattern: Pattern): boolean {
 			}
 		}
 
-		throw new Error(`Unrecognized pattern type: ${pattern}`)
+		throw new Error(`Unrecognized pattern type: ${patternExpression}`)
 	}
 
-	return isOptional(pattern)
+	return isOptional(patternExpression)
 }

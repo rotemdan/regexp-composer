@@ -1,94 +1,95 @@
-import { AnyOf, Capture, FollowedBy, NotAnyOfChars, NotFollowedBy, NotPrecededBy, OneOrMore, Pattern, Possibly, PrecededBy, Repeated, SameAs, ZeroOrMore } from './Types.js'
-import { isString, isSingleCharOrClassTokenPattern, isArray } from './Predicates.js'
+import { AnyOf, Capture, FollowedBy, NotAnyOfChars, NotFollowedBy, NotPrecededBy, OneOrMore, PatternExpression, Possibly, PrecededBy, Repeated, SameAs, ZeroOrMore } from './Types.js'
+import { isString, isSingleCharOrClassTokenExpression, isArray } from './Predicates.js'
+import { escapeStringForRegExp } from './Utilities.js'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Encoder functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export function encodePattern(pattern: Pattern, wrapRangeTokens = true): string {
-	if (isString(pattern)) {
-		return escapeStringForRegExp(pattern)
+export function encodePattern(patternExpression: PatternExpression, wrapRangeTokens = true): string {
+	if (isString(patternExpression)) {
+		return escapeStringForRegExp(patternExpression)
 	}
 
-	if (isArray(pattern)) {
-		return pattern.map(element => encodePattern(element)).join('')
+	if (isArray(patternExpression)) {
+		return patternExpression.map(element => encodePattern(element)).join('')
 	}
 
-	switch (pattern.type) {
+	switch (patternExpression.type) {
 		case 'specialToken': {
-			if (wrapRangeTokens && (pattern.name === 'charRange' || pattern.name === 'codepointRange')) {
-				return `[${pattern.rawRegExp}]`
+			if (wrapRangeTokens && (patternExpression.name === 'charRange' || patternExpression.name === 'codepointRange')) {
+				return `[${patternExpression.rawRegExp}]`
 			} else {
-				return pattern.rawRegExp
+				return patternExpression.rawRegExp
 			}
 		}
 
 		case 'possibly': {
-			return encodePattern_possibly(pattern)
+			return encodePossibly(patternExpression)
 		}
 
 		case 'zeroOrMore': {
-			return encodePattern_zeroOrMore(pattern)
+			return encodeZeroOrMore(patternExpression)
 		}
 
 		case 'oneOrMore': {
-			return encodePattern_oneOrMore(pattern)
+			return encodeOneOrMore(patternExpression)
 		}
 
 		case 'anyOf': {
-			return encodePattern_anyOf(pattern)
+			return encodeAnyOf(patternExpression)
 		}
 
 		case 'notAnyOfChars': {
-			return encodePattern_notAnyOfChars(pattern)
+			return encodeMotAnyOfChars(patternExpression)
 		}
 
 		case 'capture': {
-			return encodePattern_capture(pattern)
+			return encodeCapture(patternExpression)
 		}
 
 		case 'repeated': {
-			return encodePattern_repeated(pattern)
+			return encodeRepeated(patternExpression)
 		}
 
 		case 'followedBy': {
-			return encodePattern_followedBy(pattern)
+			return encodeFollowedBy(patternExpression)
 		}
 
 		case 'notFollowedBy': {
-			return encodePattern_notFollowedBy(pattern)
+			return encodeNotFollowedBy(patternExpression)
 		}
 
 		case 'precededBy': {
-			return encodePattern_precededBy(pattern)
+			return encodePrecededBy(patternExpression)
 		}
 
 		case 'notPrecededBy': {
-			return encodePattern_notPrecededBy(pattern)
+			return encodePattern_notPrecededBy(patternExpression)
 		}
 
 		case 'sameAs': {
-			return encodePattern_sameAs(pattern)
+			return encodeSameAs(patternExpression)
 		}
 
 		default: {
-			throw new Error(`Unrecognized pattern type: ${(pattern as any).type}`)
+			throw new Error(`Unrecognized pattern type: ${(patternExpression as any).type}`)
 		}
 	}
 }
 
-function encodePattern_anyOf(pattern: AnyOf): string {
-	const members = pattern.members
+function encodeAnyOf(node: AnyOf): string {
+	const members = node.members
 
 	if (members.length === 0) {
 		return ''
 	}
 
-	const patternGroups: Pattern[][] = [[]]
+	const patternGroups: PatternExpression[][] = [[]]
 
 	for (const member of members) {
 		const lastGroup = patternGroups[patternGroups.length - 1]
 
-		if (lastGroup.length === 0 || isSingleCharOrClassTokenPattern(member) === isSingleCharOrClassTokenPattern(lastGroup[0])) {
+		if (lastGroup.length === 0 || isSingleCharOrClassTokenExpression(member) === isSingleCharOrClassTokenExpression(lastGroup[0])) {
 			lastGroup.push(member)
 		} else {
 			patternGroups.push([member])
@@ -102,7 +103,7 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 			continue
 		}
 
-		if (isSingleCharOrClassTokenPattern(patternGroup[0])) {
+		if (isSingleCharOrClassTokenExpression(patternGroup[0])) {
 			const encodedPatternsGroup = patternGroup
 				.map(member => encodePattern(member, false))
 				.filter(value => value.length > 0)
@@ -155,8 +156,8 @@ function encodePattern_anyOf(pattern: AnyOf): string {
 	return `(?:${disjunctionString})`
 }
 
-function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
-	const members = pattern.members
+function encodeMotAnyOfChars(node: NotAnyOfChars): string {
+	const members = node.members
 
 	if (members.length === 0) {
 		return ''
@@ -165,7 +166,7 @@ function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 	const encodedElements: string[] = []
 
 	for (const member of members) {
-		if (!isSingleCharOrClassTokenPattern(member)) {
+		if (!isSingleCharOrClassTokenExpression(member)) {
 			if (isString(member)) {
 				throw new Error(`The string pattern ${member} is not a single codepoint and cannot be included in a negated character class.`)
 			}
@@ -186,61 +187,61 @@ function encodePattern_notAnyOfChars(pattern: NotAnyOfChars): string {
 	return `[^${encodedElements.join('')}]`
 }
 
-function encodePattern_possibly(pattern: Possibly): string {
-	const contentString = encodePattern(pattern.content)
+function encodePossibly(node: Possibly): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
 	}
 
-	if (isSingleCharOrClassTokenPattern(pattern.content)) {
+	if (isSingleCharOrClassTokenExpression(node.content)) {
 		return `${contentString}?`
 	} else {
 		return `(?:${contentString})?`
 	}
 }
 
-function encodePattern_zeroOrMore(pattern: ZeroOrMore): string {
-	const contentString = encodePattern(pattern.content)
+function encodeZeroOrMore(node: ZeroOrMore): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
 	}
 
-	const greedySuffix = pattern.greedy ? '' : '?'
+	const greedySuffix = node.greedy ? '' : '?'
 
-	if (isSingleCharOrClassTokenPattern(pattern.content)) {
+	if (isSingleCharOrClassTokenExpression(node.content)) {
 		return `${contentString}*${greedySuffix}`
 	} else {
 		return `(?:${contentString})*${greedySuffix}`
 	}
 }
 
-function encodePattern_oneOrMore(pattern: OneOrMore): string {
-	const contentString = encodePattern(pattern.content)
+function encodeOneOrMore(node: OneOrMore): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
 	}
 
-	const greedySuffix = pattern.greedy ? '' : '?'
+	const greedySuffix = node.greedy ? '' : '?'
 
-	if (isSingleCharOrClassTokenPattern(pattern.content)) {
+	if (isSingleCharOrClassTokenExpression(node.content)) {
 		return `${contentString}+${greedySuffix}`
 	} else {
 		return `(?:${contentString})+${greedySuffix}`
 	}
 }
 
-function encodePattern_repeated(pattern: Repeated): string {
-	const contentString = encodePattern(pattern.content)
+function encodeRepeated(node: Repeated): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
 	}
 
-	const minCount = pattern.minCount
-	const maxCount = pattern.maxCount
+	const minCount = node.minCount
+	const maxCount = node.maxCount
 
 	let countString: string
 
@@ -252,13 +253,13 @@ function encodePattern_repeated(pattern: Repeated): string {
 		countString = `{${minCount},${maxCount}}`
 	}
 
-	const greedySuffix = pattern.greedy ? '' : '?'
+	const greedySuffix = node.greedy ? '' : '?'
 
 	return `(?:${contentString})${countString}${greedySuffix}`
 }
 
-function encodePattern_precededBy(pattern: PrecededBy): string {
-	const contentString = encodePattern(pattern.content)
+function encodePrecededBy(node: PrecededBy): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
@@ -277,8 +278,8 @@ function encodePattern_notPrecededBy(pattern: NotPrecededBy): string {
 	return `(?<!${contentString})`
 }
 
-function encodePattern_followedBy(pattern: FollowedBy): string {
-	const contentString = encodePattern(pattern.content)
+function encodeFollowedBy(node: FollowedBy): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
@@ -287,8 +288,8 @@ function encodePattern_followedBy(pattern: FollowedBy): string {
 	return `(?=${contentString})`
 }
 
-function encodePattern_notFollowedBy(pattern: NotFollowedBy): string {
-	const contentString = encodePattern(pattern.content)
+function encodeNotFollowedBy(node: NotFollowedBy): string {
+	const contentString = encodePattern(node.content)
 
 	if (contentString === '') {
 		return ''
@@ -297,45 +298,20 @@ function encodePattern_notFollowedBy(pattern: NotFollowedBy): string {
 	return `(?!${contentString})`
 }
 
-function encodePattern_capture(pattern: Capture): string {
-	const contentString = encodePattern(pattern.content)
+function encodeCapture(node: Capture): string {
+	const contentString = encodePattern(node.content)
 
-	if (pattern.name) {
-		return `(?<${pattern.name}>${contentString})`
+	if (node.name) {
+		return `(?<${node.name}>${contentString})`
 	} else {
 		return `(${contentString})`
 	}
 }
 
-function encodePattern_sameAs(pattern: SameAs): string {
-	if (isString(pattern.captureGroupNameOrIndex)) {
-		return `\\k<${pattern.captureGroupNameOrIndex}>`
+function encodeSameAs(node: SameAs): string {
+	if (isString(node.captureGroupNameOrIndex)) {
+		return `\\k<${node.captureGroupNameOrIndex}>`
 	} else {
-		return `(?:\\${pattern.captureGroupNameOrIndex})`
+		return `(?:\\${node.captureGroupNameOrIndex})`
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Utilities
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function escapeStringForRegExp(str: string) {
-	// MDN Reference: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions#escaping
-	// Note: `-` must be escaped in character classes,
-	// but will error if escaped outside of them (not very good design).
-	// It must be escaped separately when in a character class, like [\-]
-	return str.replaceAll(
-		/[.*+?^${}()|[\]\\]/g,
-		'\\$&')
-}
-
-// Escapes a single character so it is safe to embed in a character class,
-// either as a `charRange` endpoint or as an element of a larger class.
-// Built on top of `escapeStringForRegExp` (which already covers `^`, `]`, `\`
-// and every other metacharacter), adding only the `-` case which is a
-// metacharacter exclusively inside character classes.
-export function escapeCharForCharClass(char: string): string {
-	const escaped = escapeStringForRegExp(char)
-
-	return escaped === '-' ? '\\-' : escaped
 }

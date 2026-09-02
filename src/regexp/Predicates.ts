@@ -1,44 +1,45 @@
-import { Pattern, SpecialToken } from './Types.js'
+import { PatternExpression, SpecialToken } from './Types.js'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Predicate functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export function isSingleCharOrClassTokenPattern(pattern: Pattern) {
-	return isSingleCharPattern(pattern) || isClassToken(pattern)
+export function isSingleCharOrClassTokenExpression(patternExpression: PatternExpression) {
+	return isSingleCharExpression(patternExpression) || isClassToken(patternExpression)
 }
 
-function isSingleCharPattern(pattern: Pattern) {
-	return (isString(pattern) && isSingleUnicodeCodepoint(pattern))
+function isSingleCharExpression(patternExpression: PatternExpression) {
+	return (isString(patternExpression) && isSingleUnicodeCodepoint(patternExpression))
 }
 
-function isClassToken(pattern: Pattern) {
-	return isSpecialToken(pattern) && !isMetacharacterToken(pattern)
+function isClassToken(patternExpression: PatternExpression) {
+	return isSpecialToken(patternExpression) && !isMetacharacterToken(patternExpression)
 }
 
-function isMetacharacterToken(pattern: Pattern) {
-	return isSpecialToken(pattern) && (
-		pattern.name === 'inputStart' ||
-		pattern.name === 'inputEnd' ||
-		pattern.name === 'anyChar' ||
-		pattern.name === 'wordBoundary' ||
-		pattern.name === 'nonWordBoundary'
+function isMetacharacterToken(patternExpression: PatternExpression) {
+	return isSpecialToken(patternExpression) && (
+		patternExpression.name === 'inputStart' ||
+		patternExpression.name === 'inputEnd' ||
+		patternExpression.name === 'anyChar' ||
+		patternExpression.name === 'wordBoundary' ||
+		patternExpression.name === 'nonWordBoundary'
 	)
 }
 
-function isSpecialToken(pattern: Pattern): pattern is SpecialToken {
-	return typeof pattern === 'object' && !isArray(pattern) && pattern.type == 'specialToken'
+function isSpecialToken(patternExpression: PatternExpression): patternExpression is SpecialToken {
+	return typeof patternExpression === 'object' &&
+		!isArray(patternExpression) && patternExpression.type == 'specialToken'
 }
 
-export function isString(data: any): data is string {
-	return typeof data === 'string'
+export function isString(obj: any): obj is string {
+	return typeof obj === 'string'
 }
 
-export function isNumber(data: any): data is number {
-	return typeof data === 'number'
+export function isNumber(obj: any): obj is number {
+	return typeof obj === 'number'
 }
 
-export function isArray(data: any): data is any[] {
-	return Array.isArray(data)
+export function isArray(obj: any): obj is any[] {
+	return Array.isArray(obj)
 }
 
 export function isSingleUnicodeCodepoint(str: string) {

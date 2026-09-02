@@ -1,9 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Pattern type definitions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export type SinglePattern =
-	string |
-	
+export type PatternNode =
 	SpecialToken |
 	Possibly |
 	ZeroOrMore |
@@ -18,30 +16,30 @@ export type SinglePattern =
 	Capture |
 	SameAs
 
-export interface PatternBase {
+export interface PatternNodeBase {
 	type: string
 }
 
-export interface Possibly extends PatternBase {
+export interface Possibly extends PatternNodeBase {
 	type: 'possibly'
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface ZeroOrMore extends PatternBase {
+export interface ZeroOrMore extends PatternNodeBase {
 	type: 'zeroOrMore'
-	content: Pattern
+	content: PatternExpression
 	greedy: boolean
 }
 
-export interface OneOrMore extends PatternBase {
+export interface OneOrMore extends PatternNodeBase {
 	type: 'oneOrMore'
-	content: Pattern
+	content: PatternExpression
 	greedy: boolean
 }
 
-export interface Repeated extends PatternBase {
+export interface Repeated extends PatternNodeBase {
 	type: 'repeated'
-	content: Pattern
+	content: PatternExpression
 
 	minCount: number
 	maxCount: number
@@ -49,53 +47,53 @@ export interface Repeated extends PatternBase {
 	greedy: boolean
 }
 
-export interface PrecededBy extends PatternBase {
+export interface PrecededBy extends PatternNodeBase {
 	type: 'precededBy'
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface NotPrecededBy extends PatternBase {
+export interface NotPrecededBy extends PatternNodeBase {
 	type: 'notPrecededBy'
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface FollowedBy extends PatternBase {
+export interface FollowedBy extends PatternNodeBase {
 	type: 'followedBy'
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface NotFollowedBy extends PatternBase {
+export interface NotFollowedBy extends PatternNodeBase {
 	type: 'notFollowedBy'
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface AnyOf extends PatternBase {
+export interface AnyOf extends PatternNodeBase {
 	type: 'anyOf'
-	members: Pattern[]
+	members: PatternExpression[]
 }
 
-export interface NotAnyOfChars extends PatternBase {
+export interface NotAnyOfChars extends PatternNodeBase {
 	type: 'notAnyOfChars'
-	members: CharPattern[]
+	members: (string | SpecialToken)[]
 }
 
-export interface Capture extends PatternBase {
+export interface Capture extends PatternNodeBase {
 	type: 'capture'
 	name: string | undefined
-	content: Pattern
+	content: PatternExpression
 }
 
-export interface SameAs extends PatternBase {
+export interface SameAs extends PatternNodeBase {
 	type: 'sameAs'
 	captureGroupNameOrIndex: string | number
 }
 
-export interface SpecialToken extends PatternBase {
+export interface SpecialToken extends PatternNodeBase {
 	type: 'specialToken'
 	name: string
 	rawRegExp: string
 }
+
 export type RepeatedRange = [number, number?]
 
-export type Pattern = SinglePattern | Pattern[]
-export type CharPattern = string | SpecialToken | CharPattern[]
+export type PatternExpression = string | PatternNode | PatternExpression[]

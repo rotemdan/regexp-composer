@@ -1,14 +1,15 @@
-import { encodePattern, escapeCharForCharClass } from '../regexp/Encoder.js'
-import { Possibly, ZeroOrMore, OneOrMore, Repeated, RepeatedRange, PrecededBy, NotPrecededBy, FollowedBy, NotFollowedBy, AnyOf, NotAnyOfChars, Capture, SameAs, SpecialToken, Pattern, SinglePattern } from './Types.js'
+import { encodePattern } from '../regexp/Encoder.js'
+import { Possibly, ZeroOrMore, OneOrMore, Repeated, RepeatedRange, PrecededBy, NotPrecededBy, FollowedBy, NotFollowedBy, AnyOf, NotAnyOfChars, Capture, SameAs, SpecialToken, PatternExpression, PatternNode } from './Types.js'
 import { isString, isNumber, isSingleUnicodeCodepoint } from './Predicates.js'
+import { escapeCharForCharClass } from './Utilities.js'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main builder function
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export function buildRegExp(pattern: Pattern, buildOptions?: Partial<BuildOptions>): RegExp {
+export function buildRegExp(patternExpression: PatternExpression, buildOptions?: Partial<BuildOptions>): RegExp {
 	const options: BuildOptions = { ...defaultBuildOptions, ...buildOptions }
 
-	const regExpString = encodePattern(pattern)
+	const regExpString = encodePattern(patternExpression)
 	const regExpFlagsString = getRegExpFlagsForOptions(options)
 
 	return new RegExp(regExpString, regExpFlagsString)
@@ -17,48 +18,48 @@ export function buildRegExp(pattern: Pattern, buildOptions?: Partial<BuildOption
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AST building functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export function possibly(pattern: Possibly['content']): Possibly {
+export function possibly(content: Possibly['content']): Possibly {
 	return {
 		type: 'possibly',
-		content: pattern,
+		content,
 	}
 }
 
-export function zeroOrMore(pattern: ZeroOrMore['content']): ZeroOrMore {
+export function zeroOrMore(content: ZeroOrMore['content']): ZeroOrMore {
 	return {
 		type: 'zeroOrMore',
-		content: pattern,
+		content,
 		greedy: true
 	}
 }
 
-export function zeroOrMoreNonGreedy(pattern: ZeroOrMore['content']): ZeroOrMore {
+export function zeroOrMoreNonGreedy(content: ZeroOrMore['content']): ZeroOrMore {
 	return {
 		type: 'zeroOrMore',
-		content: pattern,
+		content,
 		greedy: false
 	}
 }
 
-export function oneOrMore(pattern: OneOrMore['content']): OneOrMore {
+export function oneOrMore(content: OneOrMore['content']): OneOrMore {
 	return {
 		type: 'oneOrMore',
-		content: pattern,
+		content,
 		greedy: true
 	}
 }
 
-export function oneOrMoreNonGreedy(pattern: OneOrMore['content']): OneOrMore {
+export function oneOrMoreNonGreedy(content: OneOrMore['content']): OneOrMore {
 	return {
 		type: 'oneOrMore',
-		content: pattern,
+		content,
 		greedy: false
 	}
 }
 
-export function repeated(count: number, pattern: Repeated['content']): Repeated
-export function repeated(range: RepeatedRange, pattern: Repeated['content']): Repeated
-export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated['content']): Repeated {
+export function repeated(count: number, content: Repeated['content']): Repeated
+export function repeated(range: RepeatedRange, content: Repeated['content']): Repeated
+export function repeated(countOrRange: number | RepeatedRange, content: Repeated['content']): Repeated {
 	let minCount: number
 	let maxCount: number
 
@@ -88,14 +89,14 @@ export function repeated(countOrRange: number | RepeatedRange, pattern: Repeated
 		type: 'repeated',
 		minCount,
 		maxCount,
-		content: pattern,
+		content,
 		greedy: true
 	}
 }
 
-export function repeatedNonGreedy(count: number, pattern: Repeated['content']): Repeated
-export function repeatedNonGreedy(range: RepeatedRange, pattern: Repeated['content']): Repeated
-export function repeatedNonGreedy(countOrRange: number | RepeatedRange, pattern: Repeated['content']): Repeated {
+export function repeatedNonGreedy(count: number, content: Repeated['content']): Repeated
+export function repeatedNonGreedy(range: RepeatedRange, content: Repeated['content']): Repeated
+export function repeatedNonGreedy(countOrRange: number | RepeatedRange, content: Repeated['content']): Repeated {
 	let minCount: number
 	let maxCount: number
 
@@ -123,7 +124,7 @@ export function repeatedNonGreedy(countOrRange: number | RepeatedRange, pattern:
 		type: 'repeated',
 		minCount,
 		maxCount,
-		content: pattern,
+		content,
 		greedy: false
 	}
 }
@@ -142,15 +143,15 @@ export function notAnyOfChars(...members: NotAnyOfChars['members']): NotAnyOfCha
 	}
 }
 
-export function capture(pattern: Capture['content']): Capture {
+export function capture(content: Capture['content']): Capture {
 	return {
 		type: 'capture',
 		name: undefined,
-		content: pattern
+		content,
 	}
 }
 
-export function captureAs(name: string, pattern: Capture['content']): Capture {
+export function captureAs(name: string, content: Capture['content']): Capture {
 	if (name.length === 0) {
 		throw new Error(`Capture group name cannot be empty`)
 	}
@@ -162,7 +163,7 @@ export function captureAs(name: string, pattern: Capture['content']): Capture {
 	return {
 		type: 'capture',
 		name,
-		content: pattern
+		content,
 	}
 }
 
@@ -304,21 +305,21 @@ export function codepointRange(start: string | number, end: string | number): Sp
 // Match patterns
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 interface MatchesConditions {
-	except?: Pattern
-	ifFollowedBy?: Pattern
-	ifNotFollowedBy?: Pattern
-	ifPrecededBy?: Pattern
-	ifNotPrecededBy?: Pattern
-	ifExtendsTo?: Pattern
-	ifExtendsBackTo?: Pattern
-	ifNotExtendsBackTo?: Pattern
+	except?: PatternExpression
+	ifFollowedBy?: PatternExpression
+	ifNotFollowedBy?: PatternExpression
+	ifPrecededBy?: PatternExpression
+	ifNotPrecededBy?: PatternExpression
+	ifExtendsTo?: PatternExpression
+	ifExtendsBackTo?: PatternExpression
+	ifNotExtendsBackTo?: PatternExpression
 }
 
-export function matches(pattern: Pattern, conditions: MatchesConditions): Pattern
-export function matches(pattern: Pattern, conditionsArray: MatchesConditions[]): Pattern
-export function matches(pattern: Pattern, conditionsOrConditionsArray: MatchesConditions | MatchesConditions[]): Pattern {
-	const beforePattern: Pattern[] = []
-	const afterPattern: Pattern[] = []
+export function matches(content: PatternExpression, conditions: MatchesConditions): PatternExpression
+export function matches(content: PatternExpression, conditionsArray: MatchesConditions[]): PatternExpression
+export function matches(content: PatternExpression, conditionsOrConditionsArray: MatchesConditions | MatchesConditions[]): PatternExpression {
+	const beforePatternExpression: PatternExpression[] = []
+	const afterPatternExpression: PatternExpression[] = []
 
 	let conditionsArray: MatchesConditions[]
 
@@ -330,42 +331,42 @@ export function matches(pattern: Pattern, conditionsOrConditionsArray: MatchesCo
 
 	for (const conditions of conditionsArray) {
 		if (conditions.except) {
-			beforePattern.push(notFollowedBy(conditions.except))
+			beforePatternExpression.push(notFollowedBy(conditions.except))
 		}
 
 		if (conditions.ifFollowedBy) {
-			afterPattern.push(followedBy(conditions.ifFollowedBy))
+			afterPatternExpression.push(followedBy(conditions.ifFollowedBy))
 		}
 
 		if (conditions.ifNotFollowedBy) {
-			afterPattern.push(notFollowedBy(conditions.ifNotFollowedBy))
+			afterPatternExpression.push(notFollowedBy(conditions.ifNotFollowedBy))
 		}
 
 		if (conditions.ifPrecededBy) {
-			beforePattern.push(precededBy(conditions.ifPrecededBy))
+			beforePatternExpression.push(precededBy(conditions.ifPrecededBy))
 		}
 
 		if (conditions.ifNotPrecededBy) {
-			beforePattern.push(notPrecededBy(conditions.ifNotPrecededBy))
+			beforePatternExpression.push(notPrecededBy(conditions.ifNotPrecededBy))
 		}
 
 		if (conditions.ifExtendsTo) {
-			beforePattern.push(followedBy(conditions.ifExtendsTo))
+			beforePatternExpression.push(followedBy(conditions.ifExtendsTo))
 		}
 
 		if (conditions.ifExtendsBackTo) {
-			afterPattern.push(precededBy(conditions.ifExtendsBackTo))
+			afterPatternExpression.push(precededBy(conditions.ifExtendsBackTo))
 		}
 
 		if (conditions.ifNotExtendsBackTo) {
-			afterPattern.push(notPrecededBy(conditions.ifNotExtendsBackTo))
+			afterPatternExpression.push(notPrecededBy(conditions.ifNotExtendsBackTo))
 		}
 	}
 
 	const resultPattern = [
-		...beforePattern,
-		pattern,
-		...afterPattern
+		...beforePatternExpression,
+		content,
+		...afterPatternExpression
 	]
 
 	return resultPattern
@@ -375,31 +376,31 @@ export function matches(pattern: Pattern, conditionsOrConditionsArray: MatchesCo
 // Unexported builders used only internally in `matches`
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function precededBy(pattern: PrecededBy['content']): PrecededBy {
+function precededBy(content: PrecededBy['content']): PrecededBy {
 	return {
 		type: 'precededBy',
-		content: pattern
+		content,
 	}
 }
 
-function notPrecededBy(pattern: NotPrecededBy['content']): NotPrecededBy {
+function notPrecededBy(content: NotPrecededBy['content']): NotPrecededBy {
 	return {
 		type: 'notPrecededBy',
-		content: pattern
+		content,
 	}
 }
 
-function followedBy(pattern: FollowedBy['content']): FollowedBy {
+function followedBy(content: FollowedBy['content']): FollowedBy {
 	return {
 		type: 'followedBy',
-		content: pattern
+		content,
 	}
 }
 
-function notFollowedBy(pattern: NotFollowedBy['content']): NotFollowedBy {
+function notFollowedBy(content: NotFollowedBy['content']): NotFollowedBy {
 	return {
 		type: 'notFollowedBy',
-		content: pattern
+		content,
 	}
 }
 
@@ -587,5 +588,4 @@ export const verticalTab: SpecialToken = {
 }
 
 // Convenience pattern for newline
-export const newLine: SinglePattern[] = [possibly(carriageReturn), lineFeed]
-
+export const newLine: PatternExpression = [possibly(carriageReturn), lineFeed]
