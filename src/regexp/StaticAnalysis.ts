@@ -95,6 +95,13 @@ export function isPatternOptional(patternExpression: PatternExpression): boolean
 		}
 
 		if (patternExpression.type === 'anyOf') {
+			// An empty disjunction encodes to the empty pattern (see `encodeAnyOf`),
+			// which matches the empty string, so it is optional just like the empty
+			// literal. `notAnyOfChars` with zero members is treated the same way.
+			if (patternExpression.members.length === 0) {
+				return true
+			}
+
 			// A disjunction matches the empty string if ANY of its alternatives can
 			// (at least one member is optional), not only when all of them are.
 			// Evaluate all members eagerly so an invalid back-reference is never
