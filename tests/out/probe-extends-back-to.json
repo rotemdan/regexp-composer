@@ -1,0 +1,16 @@
+{
+	"extendsBackTo": {
+		"source": "a(?<=b)",
+		"flags": "dsu",
+		"onBa": false,
+		"onCa": false,
+		"onAb": false,
+		"manualOnBa": false
+	},
+	"notExtendsBackTo": {
+		"source": "a(?<!b)$",
+		"flags": "dsu",
+		"onBa": true,
+		"onCa": true
+	}
+}
